@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"net/http/cookiejar"
 	"encoding/json"
-	"fmt"
 	"math/rand"
 	"time"
 	"os"
@@ -56,7 +55,7 @@ func (session *Session) getClassmates() (classmates []string, err error) {
 	for k := range mates {
 		info, _ := mates[k].(map[string]interface{})
 		if info["role"] != "doc" {
-			name := fmt.Sprintf("%v", info["persona"])
+			name := info["persona"].(string)
 			classmates = append(classmates, name)
 		}
 	}
