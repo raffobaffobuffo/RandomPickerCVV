@@ -99,7 +99,7 @@ func (session *Session) getClassHandler (w http.ResponseWriter, r *http.Request)
 
 func (session *Session) addMateHandler (w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		log.Print("/removeMate method not allowed")
+		log.Print("/addMate method not allowed")
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
