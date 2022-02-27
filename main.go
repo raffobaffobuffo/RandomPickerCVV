@@ -10,19 +10,21 @@ import (
 	"math/rand"
 	"time"
 	"os"
+	"fmt"
 )
 
 type Session struct {
 	Client http.Client
 	uid string
 	pwd string
+	ClassMates []string
 }
 
 func newSession(uid string, pwd string) (session *Session) {
 	jar, err := cookiejar.New(nil)
 	if err != nil { log.Fatal(err) }
 	client := http.Client{Jar:jar}
-	return &Session{client, uid, pwd}
+	return &Session{client, uid, pwd, nil}
 }
 
 func (session *Session) loginCVV(uid string, pwd string) (status bool) {
@@ -37,10 +39,15 @@ func (session *Session) loginCVV(uid string, pwd string) (status bool) {
 	json.Unmarshal(b, &mapRes)
 	data, _ := mapRes["data"].(map[string]interface{})
 	auth, _ := data["auth"].(map[string]interface{})
+	accountInfo, _ := auth["accountInfo"].(map[string]interface{})
+	if err == nil {
+		name := fmt.Sprintf("%s %s", accountInfo["nome"].(string), accountInfo["cognome"].(string))
+		session.ClassMates = append(session.ClassMates, name)
+	}
 	return auth["loggedIn"].(bool)
 }
 
-func (session *Session) getClassmates() (classmates []string, err error) {
+func (session *Session) getClassmates() (err error) {
 	res, err := session.Client.Get("https://web.spaggiari.eu/sps/app/default/SocMsgApi.php?a=acGetRubrica")
 	if err != nil {
 		return
@@ -56,7 +63,7 @@ func (session *Session) getClassmates() (classmates []string, err error) {
 		info, _ := mates[k].(map[string]interface{})
 		if info["role"] != "doc" {
 			name := info["persona"].(string)
-			classmates = append(classmates, name)
+			session.ClassMates = append(session.ClassMates, name)
 		}
 	}
 	return
@@ -69,17 +76,22 @@ func draw(classmates []string) (name string) {
 }
 
 func (session *Session) drawHandler (w http.ResponseWriter, r *http.Request) {
-	log.Print("/ GET")
-	classmates, err := session.getClassmates()
-	if err != nil {
-		response := make(map[string]string)
-		response["Error"] = "Data not founde"
-		jsonresponse, _ := json.Marshal(response)
-		w.Write(jsonresponse)
-	}
-	name := draw(classmates)
+	log.Print("/draw GET")
+	name := draw(session.ClassMates)
 	response := make(map[string]string)
 	response["DRAW"] = name
+	jsonresponse, _ := json.Marshal(response)
+	w.Write(jsonresponse)
+}
+
+func (session *Session) getClassHandler (w http.ResponseWriter, r *http.Request) {
+	log.Print("/getClass GET")
+	class := make(map[int]string)
+	for i, mate := range session.ClassMates {
+		class[i] = mate
+	}
+	response := make(map[string]map[int]string)
+	response["CLASS"] = class
 	jsonresponse, _ := json.Marshal(response)
 	w.Write(jsonresponse)
 }
@@ -92,6 +104,11 @@ func main() {
 	login := session.loginCVV(uid, pwd)
 	if !login { log.Fatal("Server disconnecting...") }
 	log.Print("Server connected")
-	http.HandleFunc("/", session.drawHandler)
+	log.Print("Loading classmates...")
+	err := session.getClassmates()
+	if err != nil { log.Fatal(err) }
+	log.Print("Classmates loaded")
+	http.HandleFunc("/draw", session.drawHandler)
+	http.HandleFunc("/getClass", session.getClassHandler)
 	http.ListenAndServe(":8000", nil)
 }
