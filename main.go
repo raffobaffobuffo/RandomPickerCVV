@@ -11,6 +11,7 @@ import (
 	"time"
 	"os"
 	"fmt"
+	"strconv"
 )
 
 type Session struct {
@@ -96,6 +97,44 @@ func (session *Session) getClassHandler (w http.ResponseWriter, r *http.Request)
 	w.Write(jsonresponse)
 }
 
+func (session *Session) addMateHandler (w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		log.Print("/removeMate method not allowed")
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	log.Print("/addMate POST")
+	name := r.FormValue("name")
+	if name == "" {
+		response, _ := json.Marshal(map[string]string{"Message": "Failed request"})
+		w.Write(response)
+		return
+	}
+	session.ClassMates = append(session.ClassMates, name)
+	response, _  := json.Marshal(map[string]string{"Message": "Success"})
+	w.Write(response)
+}
+
+func (session *Session) removeMateHandler (w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		log.Print("/removeMate Method not allowed")
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	log.Print("/removeMate POST")
+	form := r.FormValue("id")
+	id, err := strconv.Atoi(form)
+	if err != nil || id >= len(session.ClassMates) {
+		response, _ := json.Marshal(map[string]string{"Message": "Failed request"})
+		w.Write(response)
+		return
+	}
+	session.ClassMates[id] = session.ClassMates[len(session.ClassMates)-1]
+	session.ClassMates = session.ClassMates[:len(session.ClassMates)-1]
+	response, _  := json.Marshal(map[string]string{"Message": "Success"})
+	w.Write(response)
+}
+
 func main() {
 	uid := os.Args[1]
 	pwd := os.Args[2]
@@ -110,5 +149,7 @@ func main() {
 	log.Print("Classmates loaded")
 	http.HandleFunc("/draw", session.drawHandler)
 	http.HandleFunc("/getClass", session.getClassHandler)
+	http.HandleFunc("/addMate", session.addMateHandler)
+	http.HandleFunc("/removeMate", session.removeMateHandler)
 	http.ListenAndServe(":8000", nil)
 }
