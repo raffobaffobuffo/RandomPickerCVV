@@ -97,6 +97,19 @@ func (session *Session) getClassHandler (w http.ResponseWriter, r *http.Request)
 	w.Write(jsonresponse)
 }
 
+func (session *Session) reloadClassHandler (w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		log.Print("/reload method not allowed")
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	log.Print("/reload POST")
+	session.ClassMates = nil
+	session.getClassmates()
+	response, _ := json.Marshal(map[string]string{"Message": "Data reloaded"})
+	w.Write(response)
+}
+
 func (session *Session) addMateHandler (w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		log.Print("/addMate method not allowed")
@@ -151,5 +164,6 @@ func main() {
 	http.HandleFunc("/getClass", session.getClassHandler)
 	http.HandleFunc("/addMate", session.addMateHandler)
 	http.HandleFunc("/removeMate", session.removeMateHandler)
+	http.HandleFunc("/reload", session.reloadClassHandler)
 	http.ListenAndServe(":8000", nil)
 }
