@@ -93,6 +93,7 @@ func (session *Session) getClassHandler (w http.ResponseWriter, r *http.Request)
 	}
 	response := make(map[string]map[int]string)
 	response["CLASS"] = class
+	response["LEN"] = map[int]string{len(class): "classmates"}
 	jsonresponse, _ := json.Marshal(response)
 	w.Write(jsonresponse)
 }
